@@ -1,0 +1,33 @@
+import random
+from deap import tools
+
+def cxTwoPoint2d(ind1, ind2):
+    row_size = len(ind1)
+    col_size = len(ind1[0])
+    
+    cx_row1 = random.randint(0, row_size - 1)
+    cx_row2 = random.randint(0, row_size - 1)
+    if cx_row2 >= cx_row1:
+        cx_row2 += 1
+    else:
+        cx_row1, cx_row2 = cx_row2, cx_row1
+    
+    cx_col1 = random.randint(0, col_size)
+    cx_col2 = random.randint(0, col_size - 1)
+    if cx_col2 >= cx_col1:
+        cx_col2 += 1
+    else:
+        cx_col1, cx_col2 = cx_col2, cx_col1
+    
+    #print cx_row1, cx_row2, cx_col1, cx_col2
+    
+    for i in range(cx_row1, cx_row2):
+        ind1[i][cx_col1:cx_col2], ind2[i][cx_col1:cx_col2] \
+            = ind2[i][cx_col1:cx_col2], ind1[i][cx_col1:cx_col2]
+    
+    return ind1, ind2
+
+def mutate2d(individual, toolbox):
+    for row in individual:
+        toolbox.mutate1d(row)
+    return individual,
