@@ -8,19 +8,23 @@ import numpy as np
 from itertools import chain, product, permutations
 from operator import attrgetter, itemgetter
 from collections import defaultdict
-######################################
+#######################################
 # Non-Dominated Sorting   (NSGA-III)  #
-######################################
+#######################################
 
 
 def selNSGA3(individuals, k, nd='standard', pertition=12):
     """
+    NSGA-IIIによる選択を行うメソッド
+    リファレンスポイントの総数H = combinations_count(M + p - 1, p)
+    pertition(p)の値はリファレンスポイントの数が個体数と等しくなるように設定すること
     :param individuals: A list of individuals to select from.
     :param k: The number of individuals to select.
     :param nd: Specify the non-dominated algorithm to use: 'standard' or 'log'.
+    :param pertition:
     :returns: A list of selected individuals.
-
     """
+
     if nd == 'standard':
         pareto_fronts = sortNondominated(individuals, k)
     elif nd == 'log':
@@ -31,27 +35,32 @@ def selNSGA3(individuals, k, nd='standard', pertition=12):
     for front in pareto_fronts:
         assignCrowdingDist(front)
     chosen = list(chain(*pareto_fronts[:-1]))
+    st = list(chain(*pareto_fronts))
     k = k - len(chosen)
-
-
-    Zr = createReferencePoint(individuals, pertition)
-    Zr = adaptive_Normalized(individuals, Zr)
-    #for ind in individuals:
-        #ind.fitness.fn = ind.fitness.values
-    associate(individuals, Zr)
-    tmp_p = [ind.fitness.pi_s for ind in chosen]
-    p = np.array([float(tmp_p.count(i)) for i in range(len(Zr))])
-    niching(k, p, pareto_fronts[-1], chosen)
+    zr = createReferencePoint(individuals, pertition)
+    zr = adaptiveNormalized(st, zr)
+    associate(st, zr)
+    tmp_ρ = [ind.fitness.ρi_s for ind in st[:len(chosen)]]
+    ρ = np.array([float(tmp_ρ.count(i)) for i in range(len(zr))])
+    niching(k, ρ, st[len(chosen):], chosen)
     return chosen
 
 
-def niching(k, p, pareto_fronts, chosen):
-    while k > 0:
-        j_array = np.where(p == p.min())[0]
+def niching(k, ρ, pareto_fronts, chosen):
+    """
+    ニッチな個体を選択するメソッド
+    :param k: 個体群の数 - 非優越ソートで選択された個体数
+    :param ρ: 各リファレンスラインと関連付けされた選択済み個体群の数
+    :param pareto_fronts: 非優越ソートで選択されなかった次のフロント
+    :param chosen: 非優越ソートで選択済みの個体群
+    :return: なし
+    """
+    while k > 0:  # k(不足個体数)が0になるまで繰り返す
+        j_array = np.where(ρ == ρ.min())[0]
         j = random.choice(j_array)
-        Ij = [ind for ind in pareto_fronts if ind.fitness.pi_s == j]
+        Ij = [ind for ind in pareto_fronts if ind.fitness.ρi_s == j]
         if Ij != []:
-            if p[j] == 0:
+            if ρ[j] == 0:
                 Ij.sort(key=attrgetter("fitness.d_s"))
                 ch_Ij = Ij[0]
             else:
@@ -61,74 +70,96 @@ def niching(k, p, pareto_fronts, chosen):
             for index, ind in enumerate(pareto_fronts):
                 if ind is ch_Ij:
                     del pareto_fronts[index]
-            p[j] += 1
+            ρ[j] += 1
             k -= 1
         else:
-            p[j] = np.inf
+            ρ[j] = np.inf
 
 
-def associate(individuals, Zr):
+def associate(individuals, zr):
     for ind in individuals:
-        u = Zr
+        u = zr
         v = np.array(ind.fitness.fn)
         if len(ind.fitness.fn) == 2:
-            d = np.linalg.norm(u-v, axis=1)
+            d = np.linalg.norm(u - v, axis=1)
         else:
             d = np.linalg.norm(np.cross(u, v), axis=1) / np.linalg.norm(u, axis=1)
-        pi_s = np.argmin(d)
-        d_s = d[pi_s]
+        ρi_s = np.argmin(d)
+        d_s = d[ρi_s]
 
-        ind.fitness.pi_s = pi_s
+        ind.fitness.ρi_s = ρi_s
         ind.fitness.d_s = d_s
 
-def distance_l(b, c):
-    a = [0, 0]
-    u = np.array([b[0]-a[0], b[1]-a[1]])
-    v = np.array([c[0]-a[0], c[1]-a[1]])
-    L = abs(np.cross(u, v)/np.linalg.norm(u))
 
-    return L
-
-
-def adaptive_Normalized(individuals, Zs):
-    fit = np.array([ind.fitness.values for ind in individuals])
-    M = len(individuals[0].fitness.values)
-    z_min = np.array([m.min() for m in fit.T])
+def calc_a(fit, M, k):
+    """
+    intercepts aを計算するメソッド
+    :param fit: 個体群の適合度をndarrayで取り出した配列
+    :param M: 目的関数の数
+    :param k: 選択済み個体の数
+    :return: 原点から極点zmaxと目的関数軸の交点までの大きさ(intercepts a)
+    """
+    zmin = np.array([m.min() for m in fit.T])
     e = np.zeros([M, M])
     for i in range(M):
         for j in range(M):
             if i == j:
                 e[i, j] = 1
-    t_fn = (fit - z_min)
+    fn = (fit - zmin)
     zmax = np.zeros([M, M])
     smin = np.array([np.inf for i in range(M)])
     for j in range(M):
         w = GetScalarizingVector(M, j)
-        s = np.zeros([1, len(individuals)])
-        for i in range(len(individuals)):
-            tmp = t_fn[i, :].T
-            tmp_s = tmp/w
+        s = np.zeros([1, k])
+        for i in range(k):
+            tmp = fn[i, :].T
+            tmp_s = tmp / w
             s[0, i] = tmp_s.max()
         sminj = s.min()
         index = np.argmin(s)
         if sminj < smin[j]:
-            zmax[j, :] = t_fn[index, :]
+            zmax[j, :] = fn[index, :]
             smin[j] = sminj
-    a = FindHyperplaneIntercepts(zmax)
-    fn = t_fn/a.T
+    a = FindHyperplaneIntercepts(zmax)   #　原点から極点zmaxと目的関数軸の交点までの大きさ
+
+    return a, zmin
 
 
-    for ind, i in zip(individuals, fn):
+def adaptiveNormalized(st, zs):
+    """
+    適応型正規化メソッド
+    非優越ソートで選択済みの個体群を用いて目的関数空間を正規化
+    正規化されたfitness.valuesをfitness.fn属性で保存
+    :param st: F1~Fl個体群
+    :param zs: リファレンスポイント構造
+    :return: 正規化された超平面上のリファレンスポイント
+    """
+    all_fit = np.array([ind.fitness.values for ind in st])
+    M = len(st[0].fitness.values)
+    k = len(st)
+
+    fit = np.array([ind.fitness.values for ind in st])
+    a, zmin = calc_a(fit, M, k)
+    all_fn = (all_fit - zmin) / a
+
+    for ind, i in zip(st, all_fn):
         ind.fitness.fn = i
 
-    Zr = Zs
-    return Zr
+    zr = zs
+
+    return zr
 
 
 def FindHyperplaneIntercepts(zmax):
-    w = np.ones([1, len(zmax[0])])
-    x2 = np.linalg.lstsq(zmax, w.T)[0]
-    a = 1 / x2
+    """
+    正規化に必要なintercepts aを計算するメソッド
+    :param zmax: 極点
+    :return: intercepts a
+    """
+    wt = np.ones([1, len(zmax[0])])
+    w = wt/zmax
+    t = 1 / w
+    a = [np.linalg.norm(i) for i in t]
     return a
 
 
@@ -141,9 +172,14 @@ def GetScalarizingVector(M, j):
 
 
 def createReferencePoint(individuals, p=4):
+    """
+    リファレンスポイントの構造を得るメソッド
+    H = combinations_count(M + p - 1, p)の値が個体数と等しくなるようなpを自分で設定すること
+    :param individuals: 全個体群
+    :param p: リファレンスポイントの分割数
+    :return: リファレンスポイントの構造
+    """
     M = len(individuals[0].fitness.values)
-    # H = combinations_count(M + p - 1, p)
-    # print(H)#リファレンスポイントの数 == len(RP)
     tmp = [i for i in range(p + 1)]
     tmp_RP = np.array(list(product(tmp, repeat=M)))
     RP = np.array([i for i in tmp_RP if sum(i) == p]) / p
@@ -161,14 +197,12 @@ def sortNondominated(individuals, k, first_front_only=False):
     see [Deb2002]_. This algorithm has a time complexity of :math:`O(MN^2)`,
     where :math:`M` is the number of objectives and :math:`N` the number of
     individuals.
-
     :param individuals: A list of individuals to select from.
     :param k: The number of individuals to select.
     :param first_front_only: If :obj:`True` sort only the first front and
                              exit.
     :returns: A list of Pareto fronts (lists), the first list includes
               nondominated individuals.
-
     .. [Deb2002] Deb, Pratab, Agarwal, and Meyarivan, "A fast elitist
        non-dominated sorting genetic algorithm for multi-objective
        optimization: NSGA-II", 2002.
@@ -188,7 +222,7 @@ def sortNondominated(individuals, k, first_front_only=False):
 
     # Rank first Pareto front
     for i, fit_i in enumerate(fits):
-        for fit_j in fits[i + 1:]:
+        for fit_j in fits[i+1:]:
             if fit_i.dominates(fit_j):
                 dominating_fits[fit_j] += 1
                 dominated_fits[fit_i].append(fit_j)
@@ -220,140 +254,6 @@ def sortNondominated(individuals, k, first_front_only=False):
             next_front = []
 
     return fronts
-
-
-def sortNondominated(individuals, k, first_front_only=False):
-    """Sort the first *k* *individuals* into different nondomination levels
-    using the "Fast Nondominated Sorting Approach" proposed by Deb et al.,
-    see [Deb2002]_. This algorithm has a time complexity of :math:`O(MN^2)`,
-    where :math:`M` is the number of objectives and :math:`N` the number of
-    individuals.
-
-    :param individuals: A list of individuals to select from.
-    :param k: The number of individuals to select.
-    :param first_front_only: If :obj:`True` sort only the first front and
-                             exit.
-    :returns: A list of Pareto fronts (lists), the first list includes
-              nondominated individuals.
-
-    .. [Deb2002] Deb, Pratab, Agarwal, and Meyarivan, "A fast elitist
-       non-dominated sorting genetic algorithm for multi-objective
-       optimization: NSGA-II", 2002.
-    """
-    if k == 0:
-        return []
-
-    map_fit_ind = defaultdict(list)
-    for ind in individuals:
-        map_fit_ind[ind.fitness].append(ind)
-    fits = list(map_fit_ind.keys())
-
-    current_front = []
-    next_front = []
-    dominating_fits = defaultdict(int)
-    dominated_fits = defaultdict(list)
-
-    # Rank first Pareto front
-    for i, fit_i in enumerate(fits):
-        for fit_j in fits[i + 1:]:
-            if fit_i.dominates(fit_j):
-                dominating_fits[fit_j] += 1
-                dominated_fits[fit_i].append(fit_j)
-            elif fit_j.dominates(fit_i):
-                dominating_fits[fit_i] += 1
-                dominated_fits[fit_j].append(fit_i)
-        if dominating_fits[fit_i] == 0:
-            current_front.append(fit_i)
-
-    fronts = [[]]
-    for fit in current_front:
-        fronts[-1].extend(map_fit_ind[fit])
-    pareto_sorted = len(fronts[-1])
-
-    # Rank the next front until all individuals are sorted or
-    # the given number of individual are sorted.
-    if not first_front_only:
-        N = min(len(individuals), k)
-        while pareto_sorted < N:
-            fronts.append([])
-            for fit_p in current_front:
-                for fit_d in dominated_fits[fit_p]:
-                    dominating_fits[fit_d] -= 1
-                    if dominating_fits[fit_d] == 0:
-                        next_front.append(fit_d)
-                        pareto_sorted += len(map_fit_ind[fit_d])
-                        fronts[-1].extend(map_fit_ind[fit_d])
-            current_front = next_front
-            next_front = []
-
-    return fronts
-
-def sortNondominated(individuals, k, first_front_only=False):
-    """Sort the first *k* *individuals* into different nondomination levels
-    using the "Fast Nondominated Sorting Approach" proposed by Deb et al.,
-    see [Deb2002]_. This algorithm has a time complexity of :math:`O(MN^2)`,
-    where :math:`M` is the number of objectives and :math:`N` the number of
-    individuals.
-
-    :param individuals: A list of individuals to select from.
-    :param k: The number of individuals to select.
-    :param first_front_only: If :obj:`True` sort only the first front and
-                             exit.
-    :returns: A list of Pareto fronts (lists), the first list includes
-              nondominated individuals.
-
-    .. [Deb2002] Deb, Pratab, Agarwal, and Meyarivan, "A fast elitist
-       non-dominated sorting genetic algorithm for multi-objective
-       optimization: NSGA-II", 2002.
-    """
-    if k == 0:
-        return []
-
-    map_fit_ind = defaultdict(list)
-    for ind in individuals:
-        map_fit_ind[ind.fitness].append(ind)
-    fits = list(map_fit_ind.keys())
-
-    current_front = []
-    next_front = []
-    dominating_fits = defaultdict(int)
-    dominated_fits = defaultdict(list)
-
-    # Rank first Pareto front
-    for i, fit_i in enumerate(fits):
-        for fit_j in fits[i + 1:]:
-            if fit_i.dominates(fit_j):
-                dominating_fits[fit_j] += 1
-                dominated_fits[fit_i].append(fit_j)
-            elif fit_j.dominates(fit_i):
-                dominating_fits[fit_i] += 1
-                dominated_fits[fit_j].append(fit_i)
-        if dominating_fits[fit_i] == 0:
-            current_front.append(fit_i)
-
-    fronts = [[]]
-    for fit in current_front:
-        fronts[-1].extend(map_fit_ind[fit])
-    pareto_sorted = len(fronts[-1])
-
-    # Rank the next front until all individuals are sorted or
-    # the given number of individual are sorted.
-    if not first_front_only:
-        N = min(len(individuals), k)
-        while pareto_sorted < N:
-            fronts.append([])
-            for fit_p in current_front:
-                for fit_d in dominated_fits[fit_p]:
-                    dominating_fits[fit_d] -= 1
-                    if dominating_fits[fit_d] == 0:
-                        next_front.append(fit_d)
-                        pareto_sorted += len(map_fit_ind[fit_d])
-                        fronts[-1].extend(map_fit_ind[fit_d])
-            current_front = next_front
-            next_front = []
-
-    return fronts
-
 
 def assignCrowdingDist(individuals):
     """Assign a crowding distance to each individual's fitness. The
