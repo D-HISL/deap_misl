@@ -12,8 +12,20 @@ from deap import tools
 from deap_misl import tools as misl_tools
 from deap_misl import utils
 
-NUM_ITEMS = 100
-weights, profits, capacities, pareto = utils.knapsack.knapsack_100_2()
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--problem", default='100_2')
+args = parser.parse_args()
+
+problems = {
+    '100_2': {'items': 100, 'data_func': utils.knapsack.knapsack_100_2},
+    '250_2': {'items': 250, 'data_func': utils.knapsack.knapsack_250_2},
+    '500_2': {'items': 500, 'data_func': utils.knapsack.knapsack_500_2}
+}
+
+NUM_ITEMS = problems[args.problem]['items']
+weights, profits, capacities, pareto = problems[args.problem]['data_func']()
 
 creator.create("Fitness", base.Fitness, weights=(1.0, 1.0))
 creator.create("Individual", list, fitness=creator.Fitness)

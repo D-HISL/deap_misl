@@ -18,7 +18,7 @@ def parse(filename):
                 knapsack['items'] = []
                 knapsacks.append(knapsack)
             elif line.startswith('capacity'):
-                knapsack['capacity'] = int(line.split(':')[1])
+                knapsack['capacity'] = float(line.split(':')[1])
             elif line.startswith('item'):
                 item = {}
                 knapsack['items'].append(item)
