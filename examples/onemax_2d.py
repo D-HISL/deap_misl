@@ -26,7 +26,8 @@ def evalOneMax(individual):
     return sum([sum(row) for row in individual]),
 
 toolbox.register("evaluate", evalOneMax)
-toolbox.register("mate", misl_tools.cxTwoPoint2d)
+#toolbox.register("mate", misl_tools.cxTwoPoint2d)
+toolbox.register("mate", misl_tools.cx2d, area_max=50, rounding=round)
 toolbox.register("mutate1d", tools.mutFlipBit, indpb=0.05)
 toolbox.register("mutate", misl_tools.mutate2d, toolbox=toolbox)
 toolbox.register("select", tools.selTournament, tournsize=3)

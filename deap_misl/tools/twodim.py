@@ -1,4 +1,5 @@
 import random
+import math
 from deap import tools
 
 def cxTwoPoint2d(ind1, ind2):
@@ -21,6 +22,33 @@ def cxTwoPoint2d(ind1, ind2):
     
     #print cx_row1, cx_row2, cx_col1, cx_col2
     
+    for i in range(cx_row1, cx_row2):
+        ind1[i][cx_col1:cx_col2], ind2[i][cx_col1:cx_col2] \
+            = ind2[i][cx_col1:cx_col2], ind1[i][cx_col1:cx_col2]
+    
+    return ind1, ind2
+
+def cx2d(ind1, ind2, area_max, rounding):
+    row_size = len(ind1)
+    col_size = len(ind1[0])
+
+    area = random.randint(1, area_max)
+
+    # areaに対して小さすぎると困るのでminを指定
+    row_min = math.ceil(area / col_size)
+    row_max = min(area, row_size)
+    row_len = random.randint(row_min, row_max)
+    row_start = random.randint(0, row_size - row_len)
+    cx_row1 = row_start
+    cx_row2 = row_start + row_len
+
+    col_len = rounding(area / (cx_row2 - cx_row1))
+    col_start = random.randint(0, col_size - col_len)
+    cx_col1 = col_start
+    cx_col2 = col_start + col_len
+
+    #print(area, row_start, row_len, col_start, col_len)
+
     for i in range(cx_row1, cx_row2):
         ind1[i][cx_col1:cx_col2], ind2[i][cx_col1:cx_col2] \
             = ind2[i][cx_col1:cx_col2], ind1[i][cx_col1:cx_col2]
