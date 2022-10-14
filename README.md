@@ -1,41 +1,47 @@
 # はじめに
 
-このリポジトリはMISLで開発しているDEAPのライブラリです。
-DEAPのモジュールと同じ構成にしてあります。
+このパッケージはMISLで開発しているDEAPの追加ライブラリです。  
+DEAPのモジュールと同じ構成になっています。
 
-# deap_misl.tools
+# パッケージ構造
 
-各種GA操作です。
-deap.toolsと同じようにtoolboxへの登録を行います。
+## deap_misl.tools
+
+各種GA操作（オペレータ）です。  
+deap.toolsと同じようにtoolboxに登録して利用します。
 
 なお、deap.toolsも使う場合は
+
+```py
 from deap_misl import tools as misl_tools
+```
+
 のように別名をつけるようにしてください。
 
-## tools.selNSGA2
+### tools.selNSGA2
 
 DEAPに含まれているselNSGA2を設計変数シェアリング（設計変数空間での混雑度による間引き）も行えるようにしたものです。
 
 サンプルファイル：examples/multi_knapsack_nsga2.py
 
-## tools.selNSGA3
+### tools.selNSGA3
 
-大沢さんによるNSGA3の実装です。
+DEAP本体にもNSGA3が含まれるようになりましたが、それより前にMISLで実装していたNSGA3です。
 
 サンプルファイル：examples/nsga3.py
 
-## tools.cxTwoPoint2d
+### tools.cxTwoPoint2d
 
 二次元交叉の実装です。
 
-サンプルファイル：examples/onemax_2d.py
+サンプルファイル：examples/onemax_2d.py  
 ※二次元遺伝子では突然変異も工夫が必要です。サンプルファイルをご参照ください。
 
-# deap_misl.algorithms
+## deap_misl.algorithms
 
 GA操作ではなく、アルゴリズム全体を実行する関数です。
 
-## algorithms.moead
+### algorithms.moead
 
 MOEA/Dの実装です。
 
