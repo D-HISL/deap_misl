@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import random
-
 import numpy
 
 from deap import algorithms
@@ -10,7 +9,8 @@ from deap import creator
 from deap import tools
 
 from deap_misl import tools as misl_tools
-from deap_misl import utils
+
+import utils
 
 NUM_ITEMS = 100
 weights, profits, capacities, pareto = utils.knapsack.knapsack_100_2()

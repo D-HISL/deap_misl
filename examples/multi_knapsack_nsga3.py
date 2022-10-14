@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import random
-
 import numpy
+
+import argparse
 
 from deap import algorithms
 from deap import base
@@ -10,9 +11,8 @@ from deap import creator
 from deap import tools
 
 from deap_misl import tools as misl_tools
-from deap_misl import utils
 
-import argparse
+import utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--problem", default='100_2')
