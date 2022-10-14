@@ -20,7 +20,7 @@ def cxTwoPoint2d(ind1, ind2):
     else:
         cx_col1, cx_col2 = cx_col2, cx_col1
     
-    #print cx_row1, cx_row2, cx_col1, cx_col2
+    #print(cx_row1, cx_row2, cx_col1, cx_col2)
     
     for i in range(cx_row1, cx_row2):
         ind1[i][cx_col1:cx_col2], ind2[i][cx_col1:cx_col2] \

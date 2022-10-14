@@ -251,7 +251,7 @@ class MOEAD:
         record = self.stats.compile(self.mainpop) if self.stats is not None else {}
         self.logbook.record(gen=0, nevals=self.popsize, **record)
         if self.verbose:
-            print self.logbook.stream
+            print(self.logbook.stream)
 
         for i in range(self.generation):
             for j in range(self.popsize):
@@ -260,7 +260,7 @@ class MOEAD:
             record = self.stats.compile(self.mainpop) if self.stats is not None else {}
             self.logbook.record(gen=i+1, nevals=self.popsize, **record)
             if self.verbose:
-                print self.logbook.stream
+                print(self.logbook.stream)
 
 def execute(toolbox, numObjectives, idealalpha, popSize, neighbourSize, scalarMethod, cxpb, mutpb, generation, stats, verbose=False):
     moead = MOEAD()
