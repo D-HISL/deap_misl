@@ -11,7 +11,7 @@ setup(
     description='DEAP additional tooklit by MISL',
     long_description=readme,
     long_description_content_type='text/markdown',
-    url='https://github.com/junjis0203/deap_misl',
+    url='https://github.com/D-HISL/deap_misl',
     author='junjis0203',
     author_email='junjis0203@gmail.com',
     packages=find_packages(exclude=['examples']),
