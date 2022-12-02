@@ -1,15 +1,11 @@
 from __future__ import division
-import bisect
-import math
 import random
 
 from itertools import chain
-from operator import attrgetter, itemgetter
-from collections import defaultdict
+from operator import attrgetter
 
 from deap.tools import emo
 
-import six
 import functools
 
 ######################################
@@ -33,7 +29,7 @@ def selNSGA2(individuals, k, chosen_by_variable=False):
        non-dominated sorting genetic algorithm for multi-objective
        optimization: NSGA-II", 2002.
     """
-    pareto_fronts = sortNondominated(individuals, k)
+    pareto_fronts = emo.sortNondominated(individuals, k)
     for front in pareto_fronts:
         assignCrowdingDist(front)
     
@@ -47,72 +43,6 @@ def selNSGA2(individuals, k, chosen_by_variable=False):
         chosen.extend(sorted_front[:k])
         
     return chosen
-
-def sortNondominated(individuals, k, first_front_only=False):
-    """Sort the first *k* *individuals* into different nondomination levels 
-    using the "Fast Nondominated Sorting Approach" proposed by Deb et al.,
-    see [Deb2002]_. This algorithm has a time complexity of :math:`O(MN^2)`, 
-    where :math:`M` is the number of objectives and :math:`N` the number of 
-    individuals.
-    
-    :param individuals: A list of individuals to select from.
-    :param k: The number of individuals to select.
-    :param first_front_only: If :obj:`True` sort only the first front and
-                             exit.
-    :returns: A list of Pareto fronts (lists), the first list includes 
-              nondominated individuals.
-
-    .. [Deb2002] Deb, Pratab, Agarwal, and Meyarivan, "A fast elitist
-       non-dominated sorting genetic algorithm for multi-objective
-       optimization: NSGA-II", 2002.
-    """
-    if k == 0:
-        return []
-
-    map_fit_ind = defaultdict(list)
-    for ind in individuals:
-        map_fit_ind[ind.fitness].append(ind)
-    fits = list(map_fit_ind.keys())
-    
-    current_front = []
-    next_front = []
-    dominating_fits = defaultdict(int)
-    dominated_fits = defaultdict(list)
-    
-    # Rank first Pareto front
-    for i, fit_i in enumerate(fits):
-        for fit_j in fits[i+1:]:
-            if fit_i.dominates(fit_j):
-                dominating_fits[fit_j] += 1
-                dominated_fits[fit_i].append(fit_j)
-            elif fit_j.dominates(fit_i):
-                dominating_fits[fit_i] += 1
-                dominated_fits[fit_j].append(fit_i)
-        if dominating_fits[fit_i] == 0:
-            current_front.append(fit_i)
-    
-    fronts = [[]]
-    for fit in current_front:
-        fronts[-1].extend(map_fit_ind[fit])
-    pareto_sorted = len(fronts[-1])
-
-    # Rank the next front until all individuals are sorted or 
-    # the given number of individual are sorted.
-    if not first_front_only:
-        N = min(len(individuals), k)
-        while pareto_sorted < N:
-            fronts.append([])
-            for fit_p in current_front:
-                for fit_d in dominated_fits[fit_p]:
-                    dominating_fits[fit_d] -= 1
-                    if dominating_fits[fit_d] == 0:
-                        next_front.append(fit_d)
-                        pareto_sorted += len(map_fit_ind[fit_d])
-                        fronts[-1].extend(map_fit_ind[fit_d])
-            current_front = next_front
-            next_front = []
-    
-    return fronts
 
 def variable_diff(x, y):
     sum = 0
@@ -153,10 +83,7 @@ def assignCrowdingDist(individuals):
        
     def mycmp(x, y):
         return variable_diff(x[0], y[0])
-    if six.PY2:
-        crowd.sort(cmp=mycmp)
-    else:
-        crowd.sort(key=functools.cmp_to_key(mycmp))
+    crowd.sort(key=functools.cmp_to_key(mycmp))
 
     distances[crowd[0][1]] = float("inf")
     distances[crowd[-1][1]] = float("inf")
@@ -216,129 +143,3 @@ def selTournamentDCD(individuals, k, chosen_by_variable=False):
         chosen.append(tourn(individuals_2[i+2], individuals_2[i+3]))
 
     return chosen
-
-
-def selSPEA2(individuals, k, chosen_by_variable=False):
-    """Apply SPEA-II selection operator on the *individuals*. Usually, the
-    size of *individuals* will be larger than *n* because any individual
-    present in *individuals* will appear in the returned list at most once.
-    Having the size of *individuals* equals to *n* will have no effect other
-    than sorting the population according to a strength Pareto scheme. The
-    list returned contains references to the input *individuals*. For more
-    details on the SPEA-II operator see [Zitzler2001]_.
-    
-    :param individuals: A list of individuals to select from.
-    :param k: The number of individuals to select.
-    :returns: A list of selected individuals.
-    
-    .. [Zitzler2001] Zitzler, Laumanns and Thiele, "SPEA 2: Improving the
-       strength Pareto evolutionary algorithm", 2001.
-    """
-    N = len(individuals)
-    L = len(individuals[0].fitness.values)
-    K = math.sqrt(N)
-    strength_fits = [0] * N
-    fits = [0] * N
-    dominating_inds = [list() for i in xrange(N)]
-    
-    for i, ind_i in enumerate(individuals):
-        for j, ind_j in enumerate(individuals[i+1:], i+1):
-            if ind_i.fitness.dominates(ind_j.fitness):
-                strength_fits[i] += 1
-                dominating_inds[j].append(i)
-            elif ind_j.fitness.dominates(ind_i.fitness):
-                strength_fits[j] += 1
-                dominating_inds[i].append(j)
-    
-    for i in xrange(N):
-        for j in dominating_inds[i]:
-            fits[i] += strength_fits[j]
-    
-    # Choose all non-dominated individuals
-    chosen_indices = [i for i in xrange(N) if fits[i] < 1]
-    
-    if len(chosen_indices) < k:     # The archive is too small
-        for i in xrange(N):
-            distances = [0.0] * N
-            for j in xrange(i + 1, N):
-                dist = 0.0
-                if chosen_by_variable:
-                    val = variable_diff(individuals[i], individuals[j])
-                    dist = val * val
-                else:
-                    for l in xrange(L):
-                        val = individuals[i].fitness.values[l] - \
-                              individuals[j].fitness.values[l]
-                        dist += val * val
-                distances[j] = dist
-            kth_dist = emo._randomizedSelect(distances, 0, N - 1, K)
-            density = 1.0 / (kth_dist + 2.0)
-            fits[i] += density
-            
-        next_indices = [(fits[i], i) for i in xrange(N)
-                        if not i in chosen_indices]
-        next_indices.sort()
-        #print next_indices
-        chosen_indices += [i for _, i in next_indices[:k - len(chosen_indices)]]
-                
-    elif len(chosen_indices) > k:   # The archive is too large
-        N = len(chosen_indices)
-        distances = [[0.0] * N for i in xrange(N)]
-        sorted_indices = [[0] * N for i in xrange(N)]
-        for i in xrange(N):
-            for j in xrange(i + 1, N):
-                dist = 0.0
-                if chosen_by_variable:
-                    val = variable_diff(individuals[chosen_indices[i]], individuals[chosen_indices[j]])
-                    dist = val * val
-                else:
-                    for l in xrange(L):
-                        val = individuals[chosen_indices[i]].fitness.values[l] - individuals[chosen_indices[j]].fitness.values[l]
-                        dist += val * val
-                distances[i][j] = dist
-                distances[j][i] = dist
-            distances[i][i] = -1
-        
-        # Insert sort is faster than quick sort for short arrays
-        for i in xrange(N):
-            for j in xrange(1, N):
-                l = j
-                while l > 0 and distances[i][j] < distances[i][sorted_indices[i][l - 1]]:
-                    sorted_indices[i][l] = sorted_indices[i][l - 1]
-                    l -= 1
-                sorted_indices[i][l] = j
-        
-        size = N
-        to_remove = []
-        while size > k:
-            # Search for minimal distance
-            min_pos = 0
-            for i in xrange(1, N):
-                for j in xrange(1, size):
-                    dist_i_sorted_j = distances[i][sorted_indices[i][j]]
-                    dist_min_sorted_j = distances[min_pos][sorted_indices[min_pos][j]]
-                    
-                    if dist_i_sorted_j < dist_min_sorted_j:
-                        min_pos = i
-                        break
-                    elif dist_i_sorted_j > dist_min_sorted_j:
-                        break
-            
-            # Remove minimal distance from sorted_indices
-            for i in xrange(N):
-                distances[i][min_pos] = float("inf")
-                distances[min_pos][i] = float("inf")
-                
-                for j in xrange(1, size - 1):
-                    if sorted_indices[i][j] == min_pos:
-                        sorted_indices[i][j] = sorted_indices[i][j + 1]
-                        sorted_indices[i][j + 1] = min_pos
-            
-            # Remove corresponding individual from chosen_indices
-            to_remove.append(min_pos)
-            size -= 1
-        
-        for index in reversed(sorted(to_remove)):
-            del chosen_indices[index]
-    
-    return [individuals[i] for i in chosen_indices]
