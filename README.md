@@ -30,13 +30,6 @@ DEAP本体にもNSGA3が含まれるようになりましたが、それより�
 
 サンプルファイル：examples/nsga3.py
 
-### tools.cxTwoPoint2d
-
-二次元交叉の実装です。
-
-サンプルファイル：examples/onemax_2d.py  
-※二次元遺伝子では突然変異も工夫が必要です。サンプルファイルをご参照ください。
-
 ## deap_misl.algorithms
 
 GA操作ではなく、アルゴリズム全体を実行する関数です。

@@ -39,7 +39,7 @@ toolbox.register("evaluate", evalOneMax)
 #toolbox.register("mate", misl_tools.cx2d, area_max=50, rounding=round)
 toolbox.register("mate", adaptive_cx2d, rounding=round)
 toolbox.register("mutate1d", tools.mutFlipBit, indpb=0.05)
-toolbox.register("mutate", misl_tools.mutate2d, toolbox=toolbox)
+toolbox.register("mutate", misl_tools.mutSimple2dExtend, mut1d=toolbox.mutate1d)
 toolbox.register("select", tools.selTournament, tournsize=3)
 
 def main():

@@ -2,6 +2,17 @@ import random
 import math
 
 def cxTwoPoint2d(ind1, ind2):
+    """Executes a 2D two-point crossover on the input individuals.
+    The two individuals are modified in place and both keep their
+    original length.
+
+    :param ind1: The first individual participating in the crossover.
+    :param ind2: The second individual participating in the crossover.
+    :returns: A tuple of two individuals.
+
+    This function uses the :func:`~random.randint` function from the
+    Python base :mod:`random` module.
+    """
     row_size = len(ind1)
     col_size = len(ind1[0])
     
@@ -25,7 +36,20 @@ def cxTwoPoint2d(ind1, ind2):
     
     return ind1, ind2
 
-def cx2d(ind1, ind2, area_max, rounding):
+def cx2d(ind1, ind2, area_max, rounding=round):
+    """Executes a 2D(area) crossover on the input individuals.
+    The two individuals are modified in place and both keep their
+    original length.
+
+    :param ind1: The first individual participating in the crossover.
+    :param ind2: The second individual participating in the crossover.
+    :param area_max: maximum value for area.
+    :param rounding: Rounding method after the decimal point.
+    :returns: A tuple of two individuals.
+
+    This function uses the :func:`~random.randint` function from the
+    Python base :mod:`random` module.
+    """
     row_size = len(ind1)
     col_size = len(ind1[0])
 
@@ -50,13 +74,27 @@ def cx2d(ind1, ind2, area_max, rounding):
     
     return ind1, ind2
 
-def mate2d(ind1, ind2, toolbox):
+def cxSimple2dExtend(ind1, ind2, cx1d):
+    """Executes a simple 2D extended crossover on the input individuals.
+
+    :param ind1: The first individual participating in the crossover.
+    :param ind2: The second individual participating in the crossover.
+    :param cx1d: Crossover function for each row.
+    :returns: A tuple of two individuals.
+    """
     row_size = len(ind1)
     for i in range(row_size):
-        toolbox.mate1d(ind1[i], ind2[i])
+        cx1d(ind1[i], ind2[i])
     return ind1, ind2
 
-def mutate2d(individual, toolbox):
+def mutSimple2dExtend(individual, mut1d):
+    """Executes a simple 2D extended mutation on the input individual
+    and return the mutant.
+
+    :param individual: Individual to be mutated.
+    :param mutate1d: Mutation function for each row.
+    :returns: A tuple of one individual.
+    """
     for row in individual:
-        toolbox.mutate1d(row)
+        mut1d(row)
     return individual,
