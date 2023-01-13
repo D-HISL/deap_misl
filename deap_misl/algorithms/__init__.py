@@ -1,4 +1,2 @@
-# -*- coding: utf-8 -*-
-
-# misl.algorithm.moead()でMOEA/Dを実行できるようにする
+# make MOEA/D execution by misl.algorithm.moead()
 from .moead import execute as moead

@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-
-DEBUG = False
-
 import numpy as np
 import math
 import random
@@ -38,10 +34,6 @@ class MOEAD:
                     if i + j <= m:
                         k = m - i - j
                         self.weights.append([i / float(m), j / float(m),k / float(m)])
-        """
-        if DEBUG:
-            print repr(self.weights)
-        """
         self.popsize = len(self.weights)
 
     def initNeighbour(self):
@@ -55,10 +47,6 @@ class MOEAD:
         for i in range(self.popsize):
             index = sorting(distancematrix[i])
             self.neighbourTable.append(index[:self.neighboursize])
-        """
-        if DEBUG:
-            print repr(self.neighbourTable)
-        """
 
     def createPopulation(self, popsize):
         return self.toolbox.population(n=popsize)
@@ -78,14 +66,9 @@ class MOEAD:
             else:
                 if ind.fitness.values[j] < self.idealpoint[j]:
                     self.idealpoint[j] = ind.fitness.values[j] * self.idealalpha[j]
-        """
-        if DEBUG:
-            print repr(self.idealpoint)
-        """
 
     def initialize(self):
         self.EP = []
-        #self.idealpoint = [1.0e+30] * self.numObjectives
         self.idealpoint = []
         ind = self.toolbox.individual()
         for w in ind.fitness.weights:
@@ -113,51 +96,20 @@ class MOEAD:
             l = self.neighbourTable[i][random.randint(0, self.neighboursize-1)]
             if l != k and l != i:
                 break
-        #while True:
-        #    m = self.neighbourTable[i][random.randint(0, self.neighboursize-1)]
-        #    if m != l and m != k and m != i:
-        #        break
         c1 = self.mainpop[k]
         c2 = self.mainpop[l]
-        #c3 = self.mainpop[m]
 
-        """
-        offSpring = self.toolbox.individual()
-        current = self.mainpop(i)
-        D = len(current)
-        jrandom = math.floor(random.random() * D)
-        for index in range(D):
-            value = 0.0
-            # 移植元では前の条件が必ず成り立っている
-            if random.random() < CR or index == jrandom:
-                value = c1[index] + F * (c2[index] - c3[index])
-            else:
-                value = current[index]
-
-            # 固定値で書かれていたが将来拡張用？
-            high = 1.0
-            low  = 0.0
-            if value > high:
-                value = high
-            if value < low:
-                value = low
-
-            offSpring[index] = value
-        """
         choice = random.random()
         if choice < self.cxpb:
-            # 交叉はtoolboxで指定されたものを使うようにする
             c1 = self.toolbox.clone(c1)
             c2 = self.toolbox.clone(c2)
             c1, c2 = self.toolbox.mate(c1, c2)
             del c1.fitness.values
         choice = random.random()
         if choice < self.mutpb:
-            # 交叉は特殊なことをしているが突然変異はtoolboxで指定されたもの使用でよい？
             c1 = self.toolbox.clone(c1)
             c1, = self.toolbox.mutate(c1)
             del c1.fitness.values
-        # 交叉して2個体生まれるが片方無視していい？
         offSpring = c1
 
         return offSpring
@@ -196,7 +148,6 @@ class MOEAD:
             e = self.updateCretia(weightindex, sol)
 
             if self.scalarMethod == 'wsScalar':
-                # 直列化した時点で、片方最小化、片方最大化は不可能
                 if offSpring.fitness.weights[0] > 0:
                     if d > e:
                         self.mainpop[weightindex] = self.toolbox.clone(offSpring)
@@ -208,23 +159,17 @@ class MOEAD:
                     self.mainpop[weightindex] = self.toolbox.clone(offSpring)
 
     def updateEP(self, offSpring):
-        # 最大化、最小化で式が違うのでlambdaと配列を使って共通化
         cond = [operator.gt if w > 0 else operator.lt
                 for w in offSpring.fitness.weights]
 
         def dominated(a, b):
             return sum([c(a, b) for a, b, c in zip(a.fitness.values, b.fitness.values, cond)]) == self.numObjectives
 
-        # 優越個体を残す（各軸についてチェックし，いずれかの軸で勝っていたら残す）
         self.EP = [ind for ind in self.EP if not dominated(offSpring, ind)]
 
-        # 新しい個体をEPに入れるか判断
-
-        # EP中のいずれかの個体に負けていたら追加しない
         for ind in self.EP:
             if dominated(ind, offSpring):
                 return
-        # いずれにも支配されていないので追加
         self.EP.append(offSpring)
 
     def evolveNewInd(self, i):

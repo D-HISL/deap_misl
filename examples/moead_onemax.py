@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import array
 import random
 
@@ -31,7 +29,6 @@ def calc(individual, check):
 CHECK1 = [0] * 0 + [1] * GENE_SIZE
 CHECK2 = [0] * ZERO_COUNT + [1] * (GENE_SIZE - ZERO_COUNT)
 
-# 対象問題
 def evalMoOneMax(individual):
     l = len(individual)
     return l - calc(individual, CHECK1), l - calc(individual, CHECK2)
@@ -57,7 +54,11 @@ stats.register("max", numpy.max, axis=0)
 
 random.seed(64)
 
-pop, logbook = algorithms.moead(toolbox, numObjectives=2, idealalpha=(1.0, 1.0), popSize=popSize, neighbourSize=neighbourSize, scalarMethod='tcheScalar', cxpb=CXPB, mutpb=MUTPB, generation=generation, stats=stats, verbose=True)
+pop, logbook = algorithms.moead(
+    toolbox, numObjectives=2, idealalpha=(1.0, 1.0),
+    popSize=popSize, neighbourSize=neighbourSize, scalarMethod='tcheScalar',
+    cxpb=CXPB, mutpb=MUTPB, generation=generation, stats=stats, verbose=True
+)
 
 import matplotlib.pyplot as plt
 

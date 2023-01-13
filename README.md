@@ -21,9 +21,3 @@ from deap_misl import tools as misl_tools
 ## deap_misl.algorithms
 
 GA操作ではなく、アルゴリズム全体を実行する関数です。
-
-### algorithms.moead
-
-MOEA/Dの実装です。
-
-サンプルファイル：examples/moead_onemax.py
