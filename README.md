@@ -18,12 +18,6 @@ from deap_misl import tools as misl_tools
 
 のように別名をつけるようにしてください。
 
-### tools.selNSGA3
-
-DEAP本体にもNSGA3が含まれるようになりましたが、それより前にMISLで実装していたNSGA3です。
-
-サンプルファイル：examples/nsga3.py
-
 ## deap_misl.algorithms
 
 GA操作ではなく、アルゴリズム全体を実行する関数です。
@@ -33,4 +27,3 @@ GA操作ではなく、アルゴリズム全体を実行する関数です。
 MOEA/Dの実装です。
 
 サンプルファイル：examples/moead_onemax.py
-
