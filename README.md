@@ -18,12 +18,6 @@ from deap_misl import tools as misl_tools
 
 のように別名をつけるようにしてください。
 
-### tools.selNSGA2
-
-DEAPに含まれているselNSGA2を設計変数シェアリング（設計変数空間での混雑度による間引き）も行えるようにしたものです。
-
-サンプルファイル：examples/multi_knapsack_nsga2.py
-
 ### tools.selNSGA3
 
 DEAP本体にもNSGA3が含まれるようになりましたが、それより前にMISLで実装していたNSGA3です。

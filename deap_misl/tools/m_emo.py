@@ -12,7 +12,7 @@ import functools
 # Non-Dominated Sorting   (NSGA-II)  #
 ######################################
 
-def selNSGA2(individuals, k, chosen_by_variable=False):
+def selNSGA2m(individuals, k, nd='standard', chosen_by_variable=False):
     """Apply NSGA-II selection operator on the *individuals*. Usually, the
     size of *individuals* will be larger than *k* because any individual
     present in *individuals* will appear in the returned list at most once.
@@ -23,15 +23,25 @@ def selNSGA2(individuals, k, chosen_by_variable=False):
     
     :param individuals: A list of individuals to select from.
     :param k: The number of individuals to select.
+    :param nd: Specify the non-dominated algorithm to use: 'standard' or 'log'.
+    :param chosen_by_variable: Use variable space crowding distance.
     :returns: A list of selected individuals.
     
     .. [Deb2002] Deb, Pratab, Agarwal, and Meyarivan, "A fast elitist
        non-dominated sorting genetic algorithm for multi-objective
        optimization: NSGA-II", 2002.
     """
-    pareto_fronts = emo.sortNondominated(individuals, k)
+    if nd == 'standard':
+        pareto_fronts = emo.sortNondominated(individuals, k)
+    elif nd == 'log':
+        pareto_fronts = emo.sortLogNondominated(individuals, k)
+    else:
+        raise Exception('selNSGA2m: The choice of non-dominated sorting '
+                        'method "{0}" is invalid.'.format(nd))
+
     for front in pareto_fronts:
-        assignCrowdingDist(front)
+        emo.assignCrowdingDist(front)
+        assignCrowdingDistForVariable(front)
     
     chosen = list(chain(*pareto_fronts[:-1]))
     k = k - len(chosen)
@@ -44,43 +54,23 @@ def selNSGA2(individuals, k, chosen_by_variable=False):
         
     return chosen
 
-def variable_diff(x, y):
-    sum = 0
-    for a, b in zip(x, y):
-        sum += (a - b)
-    return sum
-
-def assignCrowdingDist(individuals):
-    """Assign a crowding distance to each individual's fitness. The 
+def assignCrowdingDistForVariable(individuals):
+    """Assign a crowding distance to each individual's variables. The 
     crowding distance can be retrieve via the :attr:`crowding_dist` 
-    attribute of each individual's fitness.
+    attribute of each individual.
     """
     if len(individuals) == 0:
         return
     
     distances = [0.0] * len(individuals)
-    crowd = [(ind.fitness.values, i) for i, ind in enumerate(individuals)]
-    
-    nobj = len(individuals[0].fitness.values)
-    
-    for i in range(nobj):
-        crowd.sort(key=lambda element: element[0][i])
-        distances[crowd[0][1]] = float("inf")
-        distances[crowd[-1][1]] = float("inf")
-        if crowd[-1][0][i] == crowd[0][0][i]:
-            continue
-        norm = nobj * float(crowd[-1][0][i] - crowd[0][0][i])
-        for prev, cur, next in zip(crowd[:-2], crowd[1:-1], crowd[2:]):
-            distances[cur[1]] += (next[0][i] - prev[0][i]) / norm
-
-    for i, dist in enumerate(distances):
-        individuals[i].fitness.crowding_dist = dist
-
-
-    # crowding distance for design variables
-    distances = [0.0] * len(individuals)
     crowd = [(ind, i) for i, ind in enumerate(individuals)]
        
+    def variable_diff(x, y):
+        sum = 0
+        for a, b in zip(x, y):
+            sum += (a - b)
+        return sum
+
     def mycmp(x, y):
         return variable_diff(x[0], y[0])
     crowd.sort(key=functools.cmp_to_key(mycmp))
@@ -95,22 +85,32 @@ def assignCrowdingDist(individuals):
     for i, dist in enumerate(distances):
         individuals[i].crowding_dist = dist
 
-def selTournamentDCD(individuals, k, chosen_by_variable=False):
+def selTournamentDCDm(individuals, k, chosen_by_variable=False):
     """Tournament selection based on dominance (D) between two individuals, if
     the two individuals do not interdominate the selection is made
     based on crowding distance (CD). The *individuals* sequence length has to
-    be a multiple of 4. Starting from the beginning of the selected
-    individuals, two consecutive individuals will be different (assuming all
-    individuals in the input list are unique). Each individual from the input
-    list won't be selected more than twice.
+    be a multiple of 4 only if k is equal to the length of individuals. 
+    Starting from the beginning of the selected, individuals, two consecutive
+    individuals will be different (assuming all individuals in the input list
+    are unique). Each individual from the input list won't be selected more
+    than twice.
     
     This selection requires the individuals to have a :attr:`crowding_dist`
     attribute, which can be set by the :func:`assignCrowdingDist` function.
     
     :param individuals: A list of individuals to select from.
-    :param k: The number of individuals to select.
+    :param k: The number of individuals to select. Must be less than or equal 
+              to len(individuals).
+    :param chosen_by_variable: Use variable space crowding distance.
     :returns: A list of selected individuals.
     """
+
+    if k > len(individuals): 
+        raise ValueError("selTournamentDCDm: k must be less than or equal to individuals length")
+
+    if k == len(individuals) and k % 4 != 0:
+        raise ValueError("selTournamentDCDm: k must be divisible by four if k == len(individuals)")
+
     def tourn(ind1, ind2):
         if ind1.fitness.dominates(ind2.fitness):
             return ind1
