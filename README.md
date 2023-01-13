@@ -1,23 +1,17 @@
-# はじめに
+# DEAP-MISL
 
-このパッケージはMISLで開発しているDEAPの追加ライブラリです。  
-DEAPのモジュールと同じ構成になっています。
+This is additional library for [DEAP](https://github.com/deap/deap) developed by MISL.
+Package structure is same with DEAP.
 
-# パッケージ構造
+DEAP-MISL includes following algorithms.
 
-## deap_misl.tools
+* NSGA-II using design variable space's crowding
+* MOEA/D
+* Operator for 2D gene
+* Utility for adaptive hyperparameter
 
-各種GA操作（オペレータ）です。  
-deap.toolsと同じようにtoolboxに登録して利用します。
+## Installation
 
-なお、deap.toolsも使う場合は
-
-```py
-from deap_misl import tools as misl_tools
+```bash
+pip install deap_misl
 ```
-
-のように別名をつけるようにしてください。
-
-## deap_misl.algorithms
-
-GA操作ではなく、アルゴリズム全体を実行する関数です。
